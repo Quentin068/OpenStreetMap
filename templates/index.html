@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chalon Traffic Control</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #1a1a1a;
+            color: #eee;
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #layout {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Canvas Map */
+        #map-container {
+            position: relative;
+            flex-grow: 1;
+            overflow: hidden;
+            background: #000;
+            cursor: crosshair;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        /* Sidebar Style */
+        #sidebar {
+            width: 320px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            background: #222;
+            border-left: 1px solid #444;
+            z-index: 10;
+        }
+
+        h2 {
+            color: #fff;
+            text-align: center;
+            margin-top: 0;
+            border-bottom: 1px solid #555;
+            padding-bottom: 15px;
+            letter-spacing: 2px;
+        }
+
+        .panel {
+            background: #333;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 1px solid #555;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #ccc;
+        }
+
+        .val {
+            font-weight: bold;
+            font-size: 16px;
+            color: #fff;
+            font-family: monospace;
+        }
+
+        .val.ok {
+            color: #00ff00;
+        }
+
+        .val.warn {
+            color: #ff0000;
+        }
+
+        input[type=range] {
+            width: 100%;
+            margin: 15px 0;
+            accent-color: #fff;
+            cursor: pointer;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            text-transform: uppercase;
+            color: #000;
+            transition: 0.2s;
+        }
+
+        .btn-start {
+            background: #ccc;
+        }
+
+        .btn-stop {
+            background: #ff4444;
+            color: white;
+        }
+
+        .btn-ai {
+            background: transparent;
+            border: 2px solid #ffff00;
+            color: #ffff00;
+        }
+
+        .btn:hover {
+            filter: brightness(1.1);
+            transform: translateY(-2px);
+        }
+
+        .active-ai {
+            background: #ffff00;
+            color: black;
+            box-shadow: 0 0 10px #ffff00;
+        }
+
+        #alert {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ffff00;
+            color: black;
+            padding: 10px 30px;
+            border-radius: 4px;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s;
+            pointer-events: none;
+            border: 2px solid #000;
+        }
+
+        .legend {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 10px;
+            font-size: 10px;
+            color: #aaa;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+            border: 1px solid #000;
+        }
+
+        .square {
+            width: 8px;
+            height: 8px;
+            display: inline-block;
+            margin-right: 4px;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+<body>
+<div id="layout">
+    <div id="map-container">
+        <canvas id="mapCanvas"></canvas>
+        <div id="alert">TRAVAUX AJOUTÉS</div>
+    </div>
+
+    <div id="sidebar">
+        <h2>CHALON S/ SAÔNE</h2>
+
+        <div class="panel">
+            <div style="text-align:center; color:#aaa; font-size:12px; margin-bottom:5px;">FLOTTE (100 - 3000)</div>
+            <div style="text-align:center; font-size:24px; font-weight:bold; color:#fff" id="car-val">600</div>
+            <input type="range" id="car-slider" min="100" max="3000" step="100" value="600"
+                   oninput="document.getElementById('car-val').innerText = this.value">
+
+            <button class="btn btn-start" onclick="startSim()">▶ INITIALISER</button>
+            <button class="btn btn-stop" onclick="stopSim()">⏹ STOP</button>
+        </div>
+
+        <div class="panel">
+            <div class="stat-row"><span>État</span> <span id="st-mode" style="color:#aaa">Prêt</span></div>
+            <div class="stat-row"><span>Arrivées</span> <span id="st-trips" class="val">0</span></div>
+            <div class="stat-row"><span>Congestion</span> <span id="st-cong" class="val ok">0%</span></div>
+            <div class="stat-row"><span>Cycle Moy.</span> <span id="st-cycle" style="color:#ffff00">40s</span></div>
+        </div>
+
+        <button id="btn-ai" class="btn btn-ai" onclick="toggleAI()">⚡ Smart Grid (IA)</button>
+
+        <div style="flex-grow:1; position:relative; min-height:150px; margin-top:20px;">
+            <canvas id="chart"></canvas>
+        </div>
+
+        <div class="legend">
+            <span><span class="dot" style="background:#fff;"></span>Auto</span>
+            <span><span class="dot" style="background:#00ff00;"></span>Vert</span>
+            <span><span class="dot" style="background:#ff0000;"></span>Rouge</span>
+            <span><span class="square" style="background:#ffff00;"></span>Travaux</span>
+        </div>
+
+        <div style="font-size:11px; color:#777; text-align:center; margin-top:15px; border-top:1px solid #444; padding-top:10px;">
+            Molette : Zoom <br> Clic Gauche : Pan <br> Clic Droit : Travaux
+        </div>
+    </div>
+</div>
+
+<script>
+    const socket = io();
+    const canvas = document.getElementById('mapCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let roads = [], min_x, max_x, min_y, max_y, w, h;
+    let isSimulating = false;
+    let aiEnabled = false;
+
+    // --- Moteur de Rendu (Zoom/Pan) ---
+    let scale = 1, originX = 0, originY = 0;
+    let isDragging = false, startDragX, startDragY;
+
+    function resize() {
+        w = canvas.width = document.getElementById('map-container').clientWidth;
+        h = canvas.height = document.getElementById('map-container').clientHeight;
+        if (!isSimulating && roads.length > 0) drawMap([], [], []);
+    }
+
+    window.onresize = resize;
+
+    canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoom = Math.exp(e.deltaY < 0 ? 0.1 : -0.1);
+
+        // Zoom vers la souris
+        const mx = e.offsetX;
+        const my = e.offsetY;
+
+        originX -= (mx - originX) * (zoom - 1);
+        originY -= (my - originY) * (zoom - 1);
+        scale *= zoom;
+        if (!isSimulating) drawMap([], [], []);
+    });
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (e.button === 0) {
+            isDragging = true;
+            startDragX = e.clientX;
+            startDragY = e.clientY;
+        } else if (e.button === 2) {
+            handleRightClick(e);
+        }
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            originX += e.clientX - startDragX;
+            originY += e.clientY - startDragY;
+            startDragX = e.clientX;
+            startDragY = e.clientY;
+            if (!isSimulating) drawMap([], [], []);
+        }
+    });
+
+    canvas.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    function handleRightClick(e) {
+        if (!isSimulating) return;
+        // Coordonnées souris -> Monde
+        const rect = canvas.getBoundingClientRect();
+        const worldX = (e.clientX - rect.left - originX) / scale;
+        const worldY = (e.clientY - rect.top - originY) / scale;
+
+        socket.emit('add_roadwork', {
+            x: (worldX / w) * (max_x - min_x) + min_x,
+            y: ((h - worldY) / h) * (max_y - min_y) + min_y
+        });
+        const el = document.getElementById('alert');
+        el.style.opacity = 1;
+        setTimeout(() => el.style.opacity = 0, 1000);
+    }
+
+    // --- Chart.js ---
+    Chart.defaults.color = '#aaa';
+    Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+    const chart = new Chart(document.getElementById('chart'), {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Cycle (s)',
+                data: [],
+                borderColor: '#ffff00',
+                tension: 0.1,
+                pointRadius: 0,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {x: {display: false}, y: {suggestedMin: 20, suggestedMax: 100, grid: {color: '#333'}}},
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    function project(x, y) {
+        return {px: (x - min_x) / (max_x - min_x) * w, py: h - ((y - min_y) / (max_y - min_y) * h)};
+    }
+
+    socket.on('init_data', (data) => {
+        min_x = data.bounds[0];
+        max_x = data.bounds[1];
+        min_y = data.bounds[2];
+        max_y = data.bounds[3];
+        roads = data.roads;
+        resize();
+        // Centrage initial
+        scale = 0.95;
+        originX = w * 0.025;
+        originY = h * 0.025;
+        drawMap([], [], []);
+    });
+
+    socket.on('update', (data) => {
+        if (isSimulating) {
+            drawMap(data.cars, data.lights, data.roadworks);
+            updateUI(data.stats);
+        }
+    });
+
+    function updateUI(stats) {
+        document.getElementById('st-mode').innerText = "En ligne";
+        document.getElementById('st-mode').style.color = "#00ff00";
+        document.getElementById('st-trips').innerText = stats.trips;
+
+        const congEl = document.getElementById('st-cong');
+        congEl.innerText = stats.congestion.toFixed(1) + "%";
+        congEl.className = stats.congestion > 25 ? "val warn" : "val ok";
+
+        document.getElementById('st-cycle').innerText = stats.avg_cycle.toFixed(1) + "s";
+
+        if (chart.data.labels.length > 40) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+        chart.data.labels.push("");
+        chart.data.datasets[0].data.push(stats.avg_cycle);
+        chart.update();
+    }
+
+    function drawMap(cars, lights, works) {
+        ctx.save();
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, w, h);
+        ctx.translate(originX, originY);
+        ctx.scale(scale, scale);
+
+        // Routes (Fines lignes blanches)
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 0.8 / scale;
+        ctx.beginPath();
+        roads.forEach(r => {
+            let p1 = project(r[0][0], r[0][1]), p2 = project(r[1][0], r[1][1]);
+            ctx.moveTo(p1.px, p1.py);
+            ctx.lineTo(p2.px, p2.py);
+        });
+        ctx.stroke();
+
+        // Travaux (Carré jaune)
+        const blink = Math.floor(Date.now() / 400) % 2 === 0;
+        ctx.fillStyle = blink ? '#ffff00' : '#aaaa00';
+        works.forEach(rw => {
+            let p = project(rw[0], rw[1]);
+            const s = 10 / scale;
+            ctx.fillRect(p.px - s / 2, p.py - s / 2, s, s);
+        });
+
+        // Feux (Points colorés)
+        lights.forEach(l => {
+            let p = project(l.x, l.y);
+            const s = 3 / scale;
+            ctx.fillStyle = l.color;
+            ctx.beginPath();
+            ctx.arc(p.px, p.py, s, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        // Voitures (Points blancs brillants)
+        ctx.fillStyle = '#ffffff';
+        cars.forEach(c => {
+            let p = project(c[0], c[1]);
+            let r = Math.max(1, 2.5 / scale);
+            ctx.beginPath();
+            ctx.arc(p.px, p.py, r, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.restore();
+    }
+
+    function startSim() {
+        let nb = document.getElementById('car-slider').value;
+        isSimulating = true;
+        socket.emit('start_sim', {nb: nb});
+    }
+
+    function stopSim() {
+        isSimulating = false;
+        document.getElementById('st-mode').innerText = "Arrêt";
+        socket.emit('stop_sim');
+    }
+
+    function toggleAI() {
+        aiEnabled = !aiEnabled;
+        const btn = document.getElementById('btn-ai');
+        if (aiEnabled) {
+            btn.classList.add('active-ai');
+            btn.innerText = "IA ACTIVE";
+            socket.emit('toggle_ai', {active: true});
+        } else {
+            btn.classList.remove('active-ai');
+            btn.innerText = "⚡ Smart Grid (IA)";
+            socket.emit('toggle_ai', {active: false});
+        }
+    }
+</script>
+</body>
+</html>

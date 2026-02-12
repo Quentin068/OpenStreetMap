@@ -1,0 +1,15 @@
+numpy
+pandas
+matplotlib
+seaborn
+scipy
+networkx
+osmnx
+requests
+flask
+flask-socketio
+eventlet
+geopandas
+shapely
+rtree
+jupyter

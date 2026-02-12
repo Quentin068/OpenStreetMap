@@ -1,0 +1,24 @@
+<component name="InspectionProjectProfileManager">
+  <profile version="1.0">
+    <option name="myName" value="Project Default" />
+    <inspection_tool class="PyPackageRequirementsInspection" enabled="false" level="WARNING" enabled_by_default="false">
+      <option name="ignoredPackages">
+        <list>
+          <option value="ipython" />
+          <option value="matplotlib" />
+          <option value="numpy" />
+          <option value="scipy" />
+          <option value="soundfile" />
+          <option value="tensorflow" />
+          <option value="tensorflow_hub" />
+          <option value="sounddevice" />
+          <option value="seaborn" />
+          <option value="eventlet" />
+          <option value="rtree" />
+          <option value="jupyter" />
+          <option value="huggingface_hub" />
+        </list>
+      </option>
+    </inspection_tool>
+  </profile>
+</component>
