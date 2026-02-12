@@ -1,0 +1,164 @@
+body {
+    background-color: #1a1a1a;
+    color: #eee;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    overflow: hidden;
+}
+
+#layout {
+    display: flex;
+    height: 100vh;
+}
+
+/* Canvas Map */
+#map-container {
+    position: relative;
+    flex-grow: 1;
+    overflow: hidden;
+    background: #000;
+    cursor: crosshair;
+}
+
+canvas {
+    display: block;
+}
+
+/* Sidebar Style */
+#sidebar {
+    width: 320px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    background: #222;
+    border-left: 1px solid #444;
+    z-index: 10;
+}
+
+h2 {
+    color: #fff;
+    text-align: center;
+    margin-top: 0;
+    border-bottom: 1px solid #555;
+    padding-bottom: 15px;
+    letter-spacing: 2px;
+}
+
+.panel {
+    background: #333;
+    padding: 15px;
+    border-radius: 4px;
+    margin-bottom: 20px;
+    border: 1px solid #555;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.val {
+    font-weight: bold;
+    font-size: 16px;
+    color: #fff;
+    font-family: monospace;
+}
+
+.val.ok {
+    color: #00ff00;
+}
+
+.val.warn {
+    color: #ff0000;
+}
+
+input[type=range] {
+    width: 100%;
+    margin: 15px 0;
+    accent-color: #fff;
+    cursor: pointer;
+}
+
+.btn {
+    width: 100%;
+    padding: 12px;
+    margin-bottom: 10px;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+    text-transform: uppercase;
+    color: #000;
+    transition: 0.2s;
+}
+
+.btn-start {
+    background: #ccc;
+}
+
+.btn-stop {
+    background: #ff4444;
+    color: white;
+}
+
+.btn-ai {
+    background: transparent;
+    border: 2px solid #ffff00;
+    color: #ffff00;
+}
+
+.btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-2px);
+}
+
+.active-ai {
+    background: #ffff00;
+    color: black;
+    box-shadow: 0 0 10px #ffff00;
+}
+
+#alert {
+    position: absolute;
+    top: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffff00;
+    color: black;
+    padding: 10px 30px;
+    border-radius: 4px;
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+    border: 2px solid #000;
+}
+
+.legend {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 10px;
+    font-size: 10px;
+    color: #aaa;
+}
+
+.dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+    border: 1px solid #000;
+}
+
+.square {
+    width: 8px;
+    height: 8px;
+    display: inline-block;
+    margin-right: 4px;
+    border: 1px solid #000;
+}

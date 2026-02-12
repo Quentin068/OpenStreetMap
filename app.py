@@ -11,7 +11,7 @@ from config import FPS, EMIT_EVERY, DISPLAY_EVERY_N_CARS, PORT, DEFAULT_CARS
 import graph_loader
 from simulation import SimulationState
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 socketio = SocketIO(app, async_mode='threading')
 
 # Chargement
